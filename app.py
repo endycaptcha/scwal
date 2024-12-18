@@ -37,8 +37,8 @@ app.config.update(
 mail = Mail(app)
 
 
-@app.route('/fetch-emails', methods=['GET'])
-def fetch_emails():
+@app.route('/fetch-emails2', methods=['GET'])
+def fetch_emails2():
     domain = request.args.get('domain')
 
     if not domain:
@@ -100,6 +100,56 @@ def intelx_search():
                 return jsonify(result_data), 200
             elif result_data.get("status") == 1:  # No more results available
                 return jsonify({'message': 'Search completed, no more results.'}), 200
+            elif result_data.get("status") == 3:  # No results yet available
+                time.sleep(2)  # Wait for 2 seconds before retrying
+            else:
+                return jsonify({'error': 'Unexpected search status', 'status': result_data.get("status")}), 500
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/fetch-emails', methods=['POST'])
+def fetch_emails():
+    data = request.get_json()
+    domain = data.get('domain')
+
+    if not domain:
+        return jsonify({'error': 'Domain parameter is missing'}), 400
+
+    # Step 1: Submit Phonebook Search
+    search_url = f"{INTELX_BASE_URL}/phonebook/search"
+    headers = {
+        'x-key': INTELX_API_KEY,
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        "term": domain,
+        "maxresults": 100,  # Adjust based on your needs
+        "media": 0,        # Search all media types
+        "terminate": []
+    }
+
+    try:
+        search_response = requests.post(search_url, headers=headers, json=payload)
+        search_response.raise_for_status()
+        search_result = search_response.json()
+        search_id = search_result.get("id")
+
+        if not search_id:
+            return jsonify({'error': 'Failed to retrieve search ID'}), 500
+
+        # Step 2: Poll Results
+        result_url = f"{INTELX_BASE_URL}/phonebook/search/result?id={search_id}"
+        while True:
+            result_response = requests.get(result_url, headers=headers)
+            result_response.raise_for_status()
+            result_data = result_response.json()
+
+            if result_data.get("status") == 0:  # Success with results
+                emails = [record.get('name') for record in result_data.get("records", []) if record.get("name")]
+                return jsonify({"emails": emails}), 200
+            elif result_data.get("status") == 1:  # No more results available
+                return jsonify({'message': 'Search completed, no results found.'}), 200
             elif result_data.get("status") == 3:  # No results yet available
                 time.sleep(2)  # Wait for 2 seconds before retrying
             else:
