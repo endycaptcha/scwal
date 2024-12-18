@@ -66,39 +66,48 @@ def intelx_search():
     if not query:
         return jsonify({'error': 'Query parameter is missing'}), 400
 
-    url = f"{INTELX_BASE_URL}/intelligent/search"
+    # First, submit the search request
+    search_url = f"{INTELX_BASE_URL}/intelligent/search"
     headers = {
         'x-key': INTELX_API_KEY,
         'Content-Type': 'application/json'
     }
     payload = {
         "term": query,
-        "maxresults": 10,
+        "maxresults": 100,  # Adjust based on your needs
         "media": 0,  # Search all media types
         "terminate": []
     }
 
     try:
-        search_response = requests.post(url, headers=headers, json=payload)
+        # Submit search request
+        search_response = requests.post(search_url, headers=headers, json=payload)
         search_response.raise_for_status()
         search_result = search_response.json()
         search_id = search_result.get("id")
 
-        # Fetch the search results using the search ID
-        result_url = f"{INTELX_BASE_URL}/intelligent/search/result"
-        result_payload = {"id": search_id}
+        if not search_id:
+            return jsonify({'error': 'Failed to retrieve search ID'}), 500
 
+        # Poll the result endpoint
+        result_url = f"{INTELX_BASE_URL}/intelligent/search/result?id={search_id}"
         while True:
-            result_response = requests.post(result_url, headers=headers, json=result_payload)
+            result_response = requests.get(result_url, headers=headers)
             result_response.raise_for_status()
             result_data = result_response.json()
 
-            if result_data.get("status") == 3:  # Status 3 means the search is complete
+            if result_data.get("status") == 0:  # Success with results
                 return jsonify(result_data), 200
+            elif result_data.get("status") == 1:  # No more results available
+                return jsonify({'message': 'Search completed, no more results.'}), 200
+            elif result_data.get("status") == 3:  # No results yet available
+                time.sleep(2)  # Wait for 2 seconds before retrying
             else:
-                time.sleep(5)  # Wait before retrying
+                return jsonify({'error': 'Unexpected search status', 'status': result_data.get("status")}), 500
+
     except requests.exceptions.RequestException as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.after_request
 def after_request(response):
