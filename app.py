@@ -111,7 +111,7 @@ def intelx_search():
 @app.route('/fetch-emails', methods=['POST'])
 def fetch_emails():
     data = request.get_json()
-    domain = data.get('domain')
+    domain = data.get('query')
 
     if not domain:
         return jsonify({'error': 'Domain parameter is missing'}), 400
