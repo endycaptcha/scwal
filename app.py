@@ -23,8 +23,11 @@ RECAPTCHA_SECRET_KEY = '6LdYBq4pAAAAAOIqH4lzSfJPysyS30UHDF1Sorwf'
 # RECAPTCHA_SECRET_KEY2 = '6LeZMP8pAAAAAHciLVXnbjWpytLOSxIakq2KxPE3'
 RECAPTCHA_SECRET_KEY2 = '6Lck75gqAAAAAEjLXTUFphWWeD0tgTfirfhYGPrP'
 BINARYEDGE_API_KEY = 'c8a4571a-4c95-4bae-bc97-ff93a4f2527b'
-INTELX_API_KEY = "ea47d88c-eeed-4955-9605-9ea652824b7a"
-INTELX_BASE_URL = "https://2.intelx.io"
+# INTELX_API_KEY = "ea47d88c-eeed-4955-9605-9ea652824b7a"
+INTELX_API_KEY = "9df61df0-84f7-4dc7-b34c-8ccfb8646ace"
+
+# INTELX_BASE_URL = "https://2.intelx.io"
+INTELX_BASE_URL = "https://public.intelx.io/"
 
 app.config.update(
     MAIL_SERVER='mail.telemark-austria.at',
@@ -39,7 +42,7 @@ mail = Mail(app)
 
 @app.route('/fetch-emails2', methods=['GET'])
 def fetch_emails2():
-    domain = request.args.get('domain')
+    domain = request.args.get('query')
 
     if not domain:
         return jsonify({'error': 'Domain parameter is missing'}), 400
